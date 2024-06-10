@@ -21,10 +21,10 @@
           }
         },
         "url": {
-          "raw": "http://localhost:8080/user/register",
+          "raw": "http://app:8080/user/register",
           "protocol": "http",
           "host": [
-            "localhost"
+            "app"
           ],
           "port": "8080",
           "path": [
@@ -41,10 +41,10 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://localhost:8080/user/get/1",
+          "raw": "http://app:8080/user/get/1",
           "protocol": "http",
           "host": [
-            "localhost"
+            "app"
           ],
           "port": "8080",
           "path": [
@@ -71,10 +71,10 @@
           }
         },
         "url": {
-          "raw": "http://localhost:8080/login",
+          "raw": "http://app:8080/login",
           "protocol": "http",
           "host": [
-            "localhost"
+            "app"
           ],
           "port": "8080",
           "path": [

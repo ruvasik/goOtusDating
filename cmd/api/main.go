@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/your_project/internal/database"
-	"github.com/your_project/internal/handlers"
+	"github.com/ruvasik/goOtusDating/blob/master/internal/database"
+	"github.com/ruvasik/goOtusDating/blob/master/internal/handlers"
 )
 
 func main() {

@@ -1,7 +1,6 @@
-# Указываем базовый образ
-FROM golang:1.18-alpine
+# Используем базовый образ для сборки и выполнения
+FROM golang:1.21-alpine
 
-# Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 
 # Копируем файлы go.mod и go.sum и загружаем зависимости
@@ -11,8 +10,13 @@ RUN go mod download
 # Копируем остальные файлы проекта
 COPY . .
 
-# Компилируем бинарный файл
+# Компилируем бинарные файлы
 RUN go build -o main ./cmd/api
+RUN go build -o generate ./cmd/generate
+
+RUN chmod +x /app/main /app/generate
+
+COPY people.v2.csv /app/people.v2.csv
 
 # Указываем команду для запуска приложения
 CMD ["./main"]

@@ -39,7 +39,7 @@ func main() {
     fmt.Println("Data insertion completed successfully.")
 }
 
-func fetchNamesSurnames(fileName string) ([][3]string, error) {
+func fetchNamesSurnames(fileName string) ([][4]string, error) {
     file, err := os.Open(fileName)
     if err != nil {
         return nil, fmt.Errorf("Error opening CSV file: %v", err)
@@ -47,7 +47,7 @@ func fetchNamesSurnames(fileName string) ([][3]string, error) {
     defer file.Close()
 
     scanner := bufio.NewScanner(file)
-    var namesSurnames [][3]string
+    var namesSurnames [][4]string
 
     for scanner.Scan() {
         line := scanner.Text()
@@ -57,7 +57,12 @@ func fetchNamesSurnames(fileName string) ([][3]string, error) {
         }
         parts := strings.Split(line, ",")
         if len(parts) == 3 {
-            namesSurnames = append(namesSurnames, [3]string{parts[0], parts[1], parts[2]})
+            names := strings.Split(parts[0], " ")
+            if len(names) == 2 {
+                namesSurnames = append(namesSurnames, [4]string{names[1], names[0], parts[1], parts[2]})
+            } else {
+                log.Printf("Skipping malformed line: %s", line)
+            }
         } else {
             log.Printf("Skipping malformed line: %s", line)
         }
@@ -71,10 +76,10 @@ func fetchNamesSurnames(fileName string) ([][3]string, error) {
     return namesSurnames, nil
 }
 
-func generateUsers(db *sql.DB, namesSurnames [][3]string, numUsers int) error {
+func generateUsers(db *sql.DB, namesSurnames [][4]string, numUsers int) error {
     rand.Seed(time.Now().UnixNano())
 
-    stmt, err := db.Prepare("INSERT INTO users (first_name, last_name, birth_date, city) VALUES ($1, $2, $3, $4)")
+    stmt, err := db.Prepare("INSERT INTO users (first_name, last_name, birth_date, gender, interests, city, username, password) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
     if err != nil {
         return fmt.Errorf("Error preparing SQL statement: %v", err)
     }
@@ -82,7 +87,16 @@ func generateUsers(db *sql.DB, namesSurnames [][3]string, numUsers int) error {
 
     for i := 0; i < numUsers; i++ {
         nameSurname := namesSurnames[rand.Intn(len(namesSurnames))]
-        _, err := stmt.Exec(nameSurname[0], nameSurname[1], "2000-01-01", nameSurname[2]) // Используем дату по умолчанию
+        firstName := nameSurname[0]
+        lastName := nameSurname[1]
+        birthDate := nameSurname[2]
+        city := nameSurname[3]
+        gender := "M"           // Пол по умолчанию
+        interests := "Reading, Traveling"
+        username := fmt.Sprintf("user%d", i)
+        password := "password"
+
+        _, err := stmt.Exec(firstName, lastName, birthDate, gender, interests, city, username, password)
         if err != nil {
             return fmt.Errorf("Error inserting user: %v", err)
         }

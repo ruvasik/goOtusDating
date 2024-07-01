@@ -1,12 +1,12 @@
 {
-  "info": {
-    "_postman_id": "47d08a53-a8be-45de-a452-0332b514195c",
-    "name": "Go Otus Dating API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "36219451"
-  },
-  "item": [
-    {
+	"info": {
+		"_postman_id": "47d08a53-a8be-45de-a452-0332b514195c",
+		"name": "Go Otus Dating API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36219451"
+	},
+	"item": [
+		{
       "name": "Register User",
       "request": {
         "method": "POST",
@@ -79,6 +79,36 @@
           "port": "8080",
           "path": [
             "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://app:8080/user/search?first_name=Александр&last_name=Абрамов",
+          "protocol": "http",
+          "host": [
+            "app"
+          ],
+          "port": "8080",
+          "path": [
+            "user",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "first_name",
+              "value": "Александр"
+            },
+            {
+              "key": "last_name",
+              "value": "Абрамов"
+            }
           ]
         }
       },

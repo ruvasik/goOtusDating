@@ -13,7 +13,7 @@ docker-compose run --rm app ./generate
 
 Отчеты
 ======
-1. ДЗ 1 — 
+1. ДЗ 1 — [reports/report-1](reports/report-1)
 
 Postman
 =======

@@ -1,11 +1,13 @@
 Запуск
 ======
-`docker-compose up -d`
+```bash
+curl -O https://raw.githubusercontent.com/OtusTeam/highload/master/homework/people.v2.csv
+docker-compose up -d
+```
 
 Генерация пользователей
 -----------------------
 ```bash
-curl -O https://raw.githubusercontent.com/OtusTeam/highload/master/homework/people.v2.csv
 docker-compose run --rm app ./generate
 ```
 

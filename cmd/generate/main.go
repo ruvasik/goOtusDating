@@ -19,8 +19,8 @@ const (
 )
 
 func main() {
-    db := database.Connect()
-    defer db.Close()
+    masterDB, _ := database.Connect()
+    defer masterDB.Close()
 
     namesSurnames, err := fetchNamesSurnames(csvFile)
     if err != nil {
@@ -31,7 +31,7 @@ func main() {
         log.Fatalf("No names and surnames were fetched from the CSV.")
     }
 
-    err = generateUsers(db, namesSurnames, numUsers)
+    err = generateUsers(masterDB, namesSurnames, numUsers)
     if err != nil {
         log.Fatalf("Error generating users: %v", err)
     }

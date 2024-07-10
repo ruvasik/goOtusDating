@@ -1,6 +1,8 @@
 # Используем базовый образ для сборки и выполнения
 FROM golang:1.21-alpine
 
+RUN apk update && apk add --no-cache postgresql-client
+
 WORKDIR /app
 
 # Копируем файлы go.mod и go.sum и загружаем зависимости

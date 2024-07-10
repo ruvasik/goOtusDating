@@ -11,6 +11,7 @@ import (
     "strings"
     "time"
     "unicode/utf8"
+    "golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -96,7 +97,12 @@ func generateUsers(db *sql.DB, namesSurnames [][4]string, numUsers int) error {
         username := fmt.Sprintf("user%d", i)
         password := "password"
 
-        _, err := stmt.Exec(firstName, lastName, birthDate, gender, interests, city, username, password)
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        if err != nil {
+            return fmt.Errorf("Error hashing password: %v", err)
+        }
+
+        _, err = stmt.Exec(firstName, lastName, birthDate, gender, interests, city, username, string(hashedPassword))
         if err != nil {
             return fmt.Errorf("Error inserting user: %v", err)
         }

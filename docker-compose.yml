@@ -6,34 +6,37 @@ services:
   db-master:
     build:
       context: ./docker/db/master
-    container_name: dating_db_master
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_REPLICATION_USER: ${DB_USER}
-      POSTGRES_REPLICATION_PASSWORD: ${DB_PASSWORD}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - db-master-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
       - my-network
 
   db-slave:
     build:
       context: ./docker/db/slave
-    container_name: dating_db_slave
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      REPLICATION_USER: ${DB_USER}
-      REPLICATION_PASSWORD: ${DB_PASSWORD}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
       POSTGRES_HOST_AUTH_METHOD: trust
+      MASTER_HOST: db-master
     depends_on:
       - db-master
     volumes:
       - db-slave-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
     networks:
       - my-network
 
@@ -41,27 +44,18 @@ services:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-    container_name: go_otus_dating
+    env_file:
+      - .env
     environment:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       DB_HOST: db-master
-      DB_PORT: 5433
+      DB_PORT: 5432
     ports:
       - "8080:8080"
     depends_on:
       - db-master
-    networks:
-      - my-network
-
-  newman:
-    build:
-      context: .
-      dockerfile: docker/newman/Dockerfile
-    depends_on:
-      - app
-    entrypoint: ["newman", "run", "/etc/newman/go-otus-dating-api.postman_collection.json", "--delay-request", "1000"]
     networks:
       - my-network
 

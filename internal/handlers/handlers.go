@@ -60,9 +60,11 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
     err := db.QueryRow(query, id).Scan(&user.ID, &user.FirstName, &user.LastName, &user.BirthDate, &user.Gender, &user.Interests, &user.City, &user.Username)
     if err != nil {
         if err == sql.ErrNoRows {
+            log.Printf("User not found: %v", id)
             http.Error(w, "User not found", http.StatusNotFound)
             return
         }
+        log.Printf("Error fetching user: %v", err)
         http.Error(w, "Error fetching user", http.StatusInternalServerError)
         return
     }

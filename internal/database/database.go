@@ -26,24 +26,15 @@ func Connect() (*sql.DB, []*sql.DB) {
     slaveDBUser := os.Getenv("DB_USER")
     slaveDBPassword := os.Getenv("DB_PASSWORD")
     slaveDBName := os.Getenv("DB_NAME")
+    slaveHost := os.Getenv("DB_SLAVE_HOST")
+    slavePort := os.Getenv("DB_SLAVE_PORT")
 
-    slave1Host := os.Getenv("DB_SLAVE1_HOST")
-    slave1Port := os.Getenv("DB_SLAVE1_PORT")
-    slave1ConnStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", slaveDBUser, slaveDBPassword, slaveDBName, slave1Host, slave1Port)
-    slave1DB, err := sql.Open("postgres", slave1ConnStr)
+    slaveConnStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", slaveDBUser, slaveDBPassword, slaveDBName, slaveHost, slavePort)
+    slaveDB, err := sql.Open("postgres", slaveConnStr)
     if err != nil {
         log.Fatal(err)
     }
-    SlaveDBs = append(SlaveDBs, slave1DB)
-
-    slave2Host := os.Getenv("DB_SLAVE2_HOST")
-    slave2Port := os.Getenv("DB_SLAVE2_PORT")
-    slave2ConnStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", slaveDBUser, slaveDBPassword, slaveDBName, slave2Host, slave2Port)
-    slave2DB, err := sql.Open("postgres", slave2ConnStr)
-    if err != nil {
-        log.Fatal(err)
-    }
-    SlaveDBs = append(SlaveDBs, slave2DB)
+    SlaveDBs = append(SlaveDBs, slaveDB)
 
     return masterDB, SlaveDBs
 }

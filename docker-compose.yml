@@ -20,7 +20,7 @@ services:
     networks:
       - my-network
 
-  db-slave:
+  db-slave1:
     build:
       context: ./docker/db/slave
     env_file:
@@ -34,9 +34,29 @@ services:
     depends_on:
       - db-master
     volumes:
-      - db-slave-data:/var/lib/postgresql/data
+      - db-slave1-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    networks:
+      - my-network
+
+  db-slave2:
+    build:
+      context: ./docker/db/slave
+    env_file:
+      - .env
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      POSTGRES_HOST_AUTH_METHOD: trust
+      MASTER_HOST: db-master
+    depends_on:
+      - db-master
+    volumes:
+      - db-slave2-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
     networks:
       - my-network
 
@@ -61,4 +81,5 @@ services:
 
 volumes:
   db-master-data:
-  db-slave-data:
+  db-slave1-data:
+  db-slave2-data:

@@ -14,7 +14,7 @@ var masterDB *sql.DB
 
 func SetupRoutes(r *mux.Router, master *sql.DB, slaves []*sql.DB) {
     masterDB = master
-    database.DBSlave = slaves[0]
+    database.DBSlaves = slaves
 
     r.HandleFunc("/user/register", RegisterUser).Methods("POST")
     r.HandleFunc("/user/get/{id}", GetUser).Methods("GET")

@@ -35,6 +35,9 @@ chown postgres:postgres /var/lib/postgresql/data/postgresql.auto.conf
 echo "++++++ Cleaning up shared memory segments"
 ipcs -m | grep postgres | awk '{print $2}' | xargs -I {} ipcrm -m {}
 
+# Remove any existing PostgreSQL lock files
+rm -f /var/run/postgresql/*.lock
+
 echo "++++++ init-slave.sh completed"
 
 # Start the PostgreSQL server

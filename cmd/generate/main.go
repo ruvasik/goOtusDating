@@ -1,116 +1,83 @@
 package main
 
 import (
-    "bufio"
-    "database/sql"
     "fmt"
-    "github.com/ruvasik/goOtusDating/internal/database"
     "log"
-    "math/rand"
+    "encoding/csv"
     "os"
     "strings"
-    "time"
-    "unicode/utf8"
-    "golang.org/x/crypto/bcrypt"
+
+    "github.com/ruvasik/goOtusDating/internal/database"
 )
 
-const (
-    numUsers = 1000000
-    csvFile  = "/app/people.v2.csv" // Используем абсолютный путь
-)
+type User struct {
+	LastName   string
+	FirstName  string
+	BirthDate  string
+	City       string
+}
 
 func main() {
-    masterDB, _ := database.Connect()
-    defer masterDB.Close()
+    db, _ := database.Connect()
+    defer db.Close()
 
-    namesSurnames, err := fetchNamesSurnames(csvFile)
-    if err != nil {
-        log.Fatalf("Error fetching names and surnames: %v", err)
-    }
 
-    if len(namesSurnames) == 0 {
-        log.Fatalf("No names and surnames were fetched from the CSV.")
-    }
+	// Устанавливаем количество пользователей, которых нужно создать
+	targetUserCount := 1000000 // пример значения
 
-    err = generateUsers(masterDB, namesSurnames, numUsers)
-    if err != nil {
-        log.Fatalf("Error generating users: %v", err)
-    }
+	// Открываем CSV файл
+	csvFile, err := os.Open("/app/people.v2.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer csvFile.Close()
 
-    fmt.Println("Data insertion completed successfully.")
-}
+	// Создаем CSV reader
+	reader := csv.NewReader(csvFile)
 
-func fetchNamesSurnames(fileName string) ([][4]string, error) {
-    file, err := os.Open(fileName)
-    if err != nil {
-        return nil, fmt.Errorf("Error opening CSV file: %v", err)
-    }
-    defer file.Close()
+	// Читаем все строки
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    scanner := bufio.NewScanner(file)
-    var namesSurnames [][4]string
+	// Инициализируем счетчик созданных пользователей
+	createdUserCount := 0
 
-    for scanner.Scan() {
-        line := scanner.Text()
-        if !utf8.ValidString(line) {
-            log.Printf("Skipping invalid UTF-8 line: %s", line)
-            continue
-        }
-        parts := strings.Split(line, ",")
-        if len(parts) == 3 {
-            names := strings.Split(parts[0], " ")
-            if len(names) == 2 {
-                namesSurnames = append(namesSurnames, [4]string{names[1], names[0], parts[1], parts[2]})
-            } else {
-                log.Printf("Skipping malformed line: %s", line)
-            }
-        } else {
-            log.Printf("Skipping malformed line: %s", line)
-        }
-    }
+	// Обрабатываем и вставляем данные
+	for _, record := range records {
+		if createdUserCount >= targetUserCount {
+			break
+		}
 
-    if err := scanner.Err(); err != nil {
-        return nil, fmt.Errorf("Error reading CSV: %v", err)
-    }
+		// Разделяем фамилию и имя
+		nameParts := strings.Split(record[0], " ")
+		if len(nameParts) != 2 {
+			log.Fatalf("Неправильный формат имени: %s", record[0])
+		}
 
-    log.Printf("Fetched %d names and surnames from the CSV.", len(namesSurnames))
-    return namesSurnames, nil
-}
+		user := User{
+			LastName:  nameParts[0],
+			FirstName: nameParts[1],
+			BirthDate: record[1],
+			City:      record[2],
+		}
 
-func generateUsers(db *sql.DB, namesSurnames [][4]string, numUsers int) error {
-    rand.Seed(time.Now().UnixNano())
+		_, err := db.Exec("INSERT INTO users (last_name, first_name, birth_date, city) VALUES ($1, $2, $3, $4)",
+			user.LastName, user.FirstName, user.BirthDate, user.City)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-    stmt, err := db.Prepare("INSERT INTO users (first_name, last_name, birth_date, gender, interests, city, username, password) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
-    if err != nil {
-        return fmt.Errorf("Error preparing SQL statement: %v", err)
-    }
-    defer stmt.Close()
+		// Увеличиваем счетчик созданных пользователей
+		createdUserCount++
 
-    for i := 0; i < numUsers; i++ {
-        nameSurname := namesSurnames[rand.Intn(len(namesSurnames))]
-        firstName := nameSurname[0]
-        lastName := nameSurname[1]
-        birthDate := nameSurname[2]
-        city := nameSurname[3]
-        gender := "M"           // Пол по умолчанию
-        interests := "Reading, Traveling"
-        username := fmt.Sprintf("user%d", i)
-        password := "password"
+		// Выводим прогресс каждые 10 000 записей
+		if createdUserCount%10000 == 0 {
+			fmt.Printf("Создано %d пользователей\n", createdUserCount)
+		}
+	}
 
-        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-        if err != nil {
-            return fmt.Errorf("Error hashing password: %v", err)
-        }
-
-        _, err = stmt.Exec(firstName, lastName, birthDate, gender, interests, city, username, string(hashedPassword))
-        if err != nil {
-            return fmt.Errorf("Error inserting user: %v", err)
-        }
-
-        if i%10000 == 0 {
-            fmt.Printf("Inserted %d users...\n", i)
-        }
-    }
-
-    return nil
+	// Выводим итоговое количество созданных пользователей
+	fmt.Printf("Всего создано пользователей: %d\n", createdUserCount)
 }

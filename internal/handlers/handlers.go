@@ -3,9 +3,8 @@ package handlers
 import (
     "database/sql"
     "encoding/json"
-    "log" 
+    "log"
     "net/http"
-    "golang.org/x/crypto/bcrypt"
     "github.com/gorilla/mux"
     "github.com/ruvasik/goOtusDating/internal/models"
     "github.com/ruvasik/goOtusDating/internal/database"
@@ -15,12 +14,11 @@ var masterDB *sql.DB
 
 func SetupRoutes(r *mux.Router, master *sql.DB, slaves []*sql.DB) {
     masterDB = master
-    database.SlaveDBs = slaves
+    database.DBSlave = slaves[0]
 
     r.HandleFunc("/user/register", RegisterUser).Methods("POST")
     r.HandleFunc("/user/get/{id}", GetUser).Methods("GET")
     r.HandleFunc("/user/search", SearchUsers).Methods("GET")
-    r.HandleFunc("/login", Login).Methods("POST")
 }
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -31,16 +29,8 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-    if err != nil {
-        http.Error(w, "Error hashing password", http.StatusInternalServerError)
-        return
-    }
-    user.Password = string(hashedPassword)
-
-    query := `INSERT INTO users (first_name, last_name, birth_date, gender, interests, city, username, password)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-    err = masterDB.QueryRow(query, user.FirstName, user.LastName, user.BirthDate, user.Gender, user.Interests, user.City, user.Username, user.Password).Scan(&user.ID)
+    query := `INSERT INTO users (first_name, last_name, birth_date, city) VALUES ($1, $2, $3, $4) RETURNING id`
+    err = masterDB.QueryRow(query, user.FirstName, user.LastName, user.BirthDate, user.City).Scan(&user.ID)
     if err != nil {
         http.Error(w, "Error creating user", http.StatusInternalServerError)
         return
@@ -56,8 +46,9 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
     id := params["id"]
 
     var user models.User
-    query := `SELECT id, first_name, last_name, birth_date, gender, interests, city, username FROM users WHERE id = $1`
-    err := db.QueryRow(query, id).Scan(&user.ID, &user.FirstName, &user.LastName, &user.BirthDate, &user.Gender, &user.Interests, &user.City, &user.Username)
+    var firstName, lastName, birthDate, city sql.NullString
+    query := `SELECT id, first_name, last_name, birth_date, city FROM users WHERE id = $1`
+    err := db.QueryRow(query, id).Scan(&user.ID, &firstName, &lastName, &birthDate, &city)
     if err != nil {
         if err == sql.ErrNoRows {
             log.Printf("User not found: %v", id)
@@ -68,6 +59,11 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Error fetching user", http.StatusInternalServerError)
         return
     }
+
+    user.FirstName = firstName.String
+    user.LastName = lastName.String
+    user.BirthDate = birthDate.String
+    user.City = city.String
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(user)
@@ -80,8 +76,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 
     log.Printf("Searching for users with first name: %s and last name: %s", firstName, lastName)
 
-    rows, err := db.Query("SELECT id, first_name, last_name, birth_date, city FROM users WHERE first_name LIKE $1 AND last_name LIKE $2 ORDER BY id",
-        firstName+"%", lastName+"%")
+    rows, err := db.Query("SELECT id, first_name, last_name, birth_date, city FROM users WHERE first_name LIKE $1 AND last_name LIKE $2 ORDER BY id", firstName+"%", lastName+"%")
     if err != nil {
         log.Printf("Error executing query: %v", err)
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -91,13 +86,18 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 
     var users []models.User
     for rows.Next() {
-        var u models.User
-        if err := rows.Scan(&u.ID, &u.FirstName, &u.LastName, &u.BirthDate, &u.City); err != nil {
+        var user models.User
+        var firstName, lastName, birthDate, city sql.NullString
+        if err := rows.Scan(&user.ID, &firstName, &lastName, &birthDate, &city); err != nil {
             log.Printf("Error scanning row: %v", err)
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         }
-        users = append(users, u)
+        user.FirstName = firstName.String
+        user.LastName = lastName.String
+        user.BirthDate = birthDate.String
+        user.City = city.String
+        users = append(users, user)
     }
 
     if err := rows.Err(); err != nil {
@@ -110,34 +110,4 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(users)
-}
-
-func Login(w http.ResponseWriter, r *http.Request) {
-    var creds models.User
-    err := json.NewDecoder(r.Body).Decode(&creds)
-    if err != nil {
-        http.Error(w, "Invalid request payload", http.StatusBadRequest)
-        return
-    }
-
-    var storedUser models.User
-    query := `SELECT id, password FROM users WHERE username = $1`
-    err = masterDB.QueryRow(query, creds.Username).Scan(&storedUser.ID, &storedUser.Password)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            http.Error(w, "User not found", http.StatusUnauthorized)
-            return
-        }
-        http.Error(w, "Error fetching user", http.StatusInternalServerError)
-        return
-    }
-
-    err = bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(creds.Password))
-    if err != nil {
-        http.Error(w, "Invalid password", http.StatusUnauthorized)
-        return
-    }
-
-    w.WriteHeader(http.StatusOK)
-    w.Write([]byte("Login successful"))
 }

@@ -6,6 +6,7 @@ import (
     "encoding/csv"
     "os"
     "strings"
+		"database/sql"
 
     "github.com/ruvasik/goOtusDating/internal/database"
 )
@@ -17,10 +18,14 @@ type User struct {
 	City       string
 }
 
-func main() {
-    db, _ := database.Connect()
-    defer db.Close()
+var db *sql.DB
 
+func main() {
+	database.InitDB()
+	defer database.CloseDB()
+
+	// Assuming dbMaster is the database to be used for generating data
+	db = database.DBMaster
 
 	// Устанавливаем количество пользователей, которых нужно создать
 	targetUserCount := 1000000 // пример значения

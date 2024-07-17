@@ -6,83 +6,120 @@ import (
     "encoding/csv"
     "os"
     "strings"
-		"database/sql"
+    "database/sql"
 
     "github.com/ruvasik/goOtusDating/internal/database"
 )
 
 type User struct {
-	LastName   string
-	FirstName  string
-	BirthDate  string
-	City       string
+    LastName   string
+    FirstName  string
+    BirthDate  string
+    City       string
 }
 
 var db *sql.DB
 
 func main() {
-	database.InitDB()
-	defer database.CloseDB()
+    fmt.Println("Initializing database")
+    database.InitDB()
+    defer database.CloseDB()
 
-	// Assuming dbMaster is the database to be used for generating data
-	db = database.DBMaster
+    // Проверка соединения
+    err := database.DBMaster.Ping()
+    if err != nil {
+        log.Fatalf("Failed to connect to master database: %v", err)
+    }
 
-	// Устанавливаем количество пользователей, которых нужно создать
-	targetUserCount := 1000000 // пример значения
+    db = database.DBMaster
 
-	// Открываем CSV файл
-	csvFile, err := os.Open("/app/people.v2.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer csvFile.Close()
+    // Устанавливаем количество пользователей, которых нужно создать
+    targetUserCount := 1000000 // пример значения
 
-	// Создаем CSV reader
-	reader := csv.NewReader(csvFile)
+    // Открываем CSV файл
+    fmt.Println("Opening CSV file")
+    csvFile, err := os.Open("/app/people.v2.csv")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer csvFile.Close()
 
-	// Читаем все строки
-	records, err := reader.ReadAll()
-	if err != nil {
-		log.Fatal(err)
-	}
+    // Создаем CSV reader
+    fmt.Println("Creating CSV reader")
+    reader := csv.NewReader(csvFile)
 
-	// Инициализируем счетчик созданных пользователей
-	createdUserCount := 0
+    // Читаем все строки
+    fmt.Println("Reading CSV file")
+    records, err := reader.ReadAll()
+    if err != nil {
+        log.Fatal(err)
+    }
 
-	// Обрабатываем и вставляем данные
-	for _, record := range records {
-		if createdUserCount >= targetUserCount {
-			break
-		}
+    // Инициализируем счетчик созданных пользователей
+    createdUserCount := 0
 
-		// Разделяем фамилию и имя
-		nameParts := strings.Split(record[0], " ")
-		if len(nameParts) != 2 {
-			log.Fatalf("Неправильный формат имени: %s", record[0])
-		}
+    fmt.Println("Start generating data")
 
-		user := User{
-			LastName:  nameParts[0],
-			FirstName: nameParts[1],
-			BirthDate: record[1],
-			City:      record[2],
-		}
+    // Начинаем транзакцию
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatalf("Failed to begin transaction: %v", err)
+    }
 
-		_, err := db.Exec("INSERT INTO users (last_name, first_name, birth_date, city) VALUES ($1, $2, $3, $4)",
-			user.LastName, user.FirstName, user.BirthDate, user.City)
-		if err != nil {
-			log.Fatal(err)
-		}
+    // Обрабатываем и вставляем данные
+    for _, record := range records {
+        if createdUserCount >= targetUserCount {
+            break
+        }
 
-		// Увеличиваем счетчик созданных пользователей
-		createdUserCount++
+        // Разделяем фамилию и имя
+        nameParts := strings.Split(record[0], " ")
+        if len(nameParts) != 2 {
+            log.Printf("Invalid name format: %s", record[0])
+            err := tx.Rollback()
+            if err != nil {
+                log.Fatalf("Failed to rollback transaction: %v", err)
+            }
+            log.Fatalf("Rolled back transaction due to invalid name format")
+        }
 
-		// Выводим прогресс каждые 10 000 записей
-		if createdUserCount%10000 == 0 {
-			fmt.Printf("Создано %d пользователей\n", createdUserCount)
-		}
-	}
+        user := User{
+            LastName:  nameParts[0],
+            FirstName: nameParts[1],
+            BirthDate: record[1],
+            City:      record[2],
+        }
 
-	// Выводим итоговое количество созданных пользователей
-	fmt.Printf("Всего создано пользователей: %d\n", createdUserCount)
+        fmt.Printf("Inserting user: %+v\n", user)
+
+        // Обновленный INSERT-запрос
+        _, err := tx.Exec("INSERT INTO users (first_name, last_name, birth_date, city) VALUES ($1, $2, $3, $4)",
+            user.FirstName, user.LastName, user.BirthDate, user.City)
+        if err != nil {
+            log.Printf("Failed to insert user: %v", err)
+            err := tx.Rollback()
+            if err != nil {
+                log.Fatalf("Failed to rollback transaction: %v", err)
+            }
+            log.Fatalf("Rolled back transaction due to insert error")
+        }
+
+        // Увеличиваем счетчик созданных пользователей
+        createdUserCount++
+
+        // Выводим прогресс каждые 1000 записей
+        if createdUserCount % 1000 == 0 {
+            fmt.Printf("Created %d users\n", createdUserCount)
+        }
+    }
+
+    // Фиксируем транзакцию
+    err = tx.Commit()
+    if err != nil {
+        log.Fatalf("Failed to commit transaction: %v", err)
+    }
+    log.Println("Transaction committed successfully")
+
+    // Выводим итоговое количество созданных пользователей
+    fmt.Printf("Total users created: %d\n", createdUserCount)
 }

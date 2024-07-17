@@ -1,5 +1,5 @@
 services:
-  db-master:
+  db_master:
     image: postgres:latest
     env_file:
       - .env
@@ -9,14 +9,14 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
-      - db-master-data:/var/lib/postgresql/data
+      - db_master-data:/var/lib/postgresql/data
       - ./docker/db/master:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     networks:
       - my-network
 
-  db-slave1:
+  db_slave1:
     image: postgres:latest
     env_file:
       - .env
@@ -25,19 +25,19 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_HOST_AUTH_METHOD: trust
-      MASTER_HOST: db-master
-      REPLICATION_APPLICATION_NAME: db-slave1
+      MASTER_HOST: db_master
+      REPLICATION_APPLICATION_NAME: db_slave1
     depends_on:
-      - db-master
+      - db_master
     volumes:
-      - db-slave1-data:/var/lib/postgresql/data
+      - db_slave1-data:/var/lib/postgresql/data
       - ./docker/db/slave:/docker-entrypoint-initdb.d
     ports:
       - "5433:5432"
     networks:
       - my-network
 
-  db-slave2:
+  db_slave2:
     image: postgres:latest
     env_file:
       - .env
@@ -46,12 +46,12 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_HOST_AUTH_METHOD: trust
-      MASTER_HOST: db-master
-      REPLICATION_APPLICATION_NAME: db-slave2
+      MASTER_HOST: db_master
+      REPLICATION_APPLICATION_NAME: db_slave2
     depends_on:
-      - db-master
+      - db_master
     volumes:
-      - db-slave2-data:/var/lib/postgresql/data
+      - db_slave2-data:/var/lib/postgresql/data
       - ./docker/db/slave:/docker-entrypoint-initdb.d
     ports:
       - "5434:5432"
@@ -68,19 +68,19 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
-      DB_HOST: db-master
+      DB_HOST: db_master
       DB_PORT: 5432
     ports:
       - "8080:8080"
     depends_on:
-      - db-master
+      - db_master
     networks:
       - my-network
 
 volumes:
-  db-master-data:
-  db-slave1-data:
-  db-slave2-data:
+  db_master-data:
+  db_slave1-data:
+  db_slave2-data:
 
 networks:
   my-network:
